@@ -5,6 +5,8 @@
   "main": "out/main/index.js",
   "private": true,
   "scripts": {
+    "server": "node src/server.mjs",
+    "start": "node src/server.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
