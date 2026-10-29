@@ -1,7 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import { Prospecto } from '../domain/prospecto.entity.js';
 import { EstadoProspecto } from '../domain/estado-prospecto.enum.js';
-import type { IProspectoRepository, ProspectoFiltros } from '../domain/prospecto.repository.js';
+import type {
+  IProspectoRepository,
+  ProspectoFiltros,
+  ProspectoEventoRecord
+} from '../domain/prospecto.repository.js';
 
 interface ProspectoRow {
   id: string;
@@ -41,10 +45,25 @@ export class SqliteProspectoRepository implements IProspectoRepository {
       CREATE INDEX IF NOT EXISTS idx_prospectos_email ON prospectos(email);
       CREATE INDEX IF NOT EXISTS idx_prospectos_telefono ON prospectos(telefono);
       CREATE INDEX IF NOT EXISTS idx_prospectos_estado ON prospectos(estado);
+
+      CREATE TABLE IF NOT EXISTS prospecto_eventos_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prospecto_id TEXT NOT NULL,
+        evento TEXT NOT NULL,
+        estado_anterior TEXT,
+        estado_nuevo TEXT NOT NULL,
+        detalles TEXT,
+        timestamp TEXT NOT NULL,
+        FOREIGN KEY (prospecto_id) REFERENCES prospectos(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_prospecto_eventos_pid ON prospecto_eventos_log(prospecto_id);
     `);
   }
 
   public async guardar(prospecto: Prospecto): Promise<void> {
+    // Detectar si es creación o mutación de estado para auditoría append-only
+    const existing = await this.buscarPorId(prospecto.id);
+
     const stmt = this.db.prepare(`
       INSERT INTO prospectos (id, nombre, email, telefono, canal_origen, estado, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -67,6 +86,69 @@ export class SqliteProspectoRepository implements IProspectoRepository {
       prospecto.createdAt.toISOString(),
       prospecto.updatedAt.toISOString()
     );
+
+    if (!existing) {
+      await this.registrarEvento({
+        prospectoId: prospecto.id,
+        evento: 'PROSPECTO_CREADO',
+        estadoAnterior: null,
+        estadoNuevo: prospecto.estado,
+        detalles: `Prospecto capturado vía ${prospecto.canalOrigen}`,
+        timestamp: prospecto.createdAt.toISOString()
+      });
+    } else if (existing.estado !== prospecto.estado) {
+      await this.registrarEvento({
+        prospectoId: prospecto.id,
+        evento: 'TRANSICION_ESTADO',
+        estadoAnterior: existing.estado,
+        estadoNuevo: prospecto.estado,
+        detalles: `Transición de estado: ${existing.estado} -> ${prospecto.estado}`,
+        timestamp: prospecto.updatedAt.toISOString()
+      });
+    }
+  }
+
+  public async registrarEvento(evento: ProspectoEventoRecord): Promise<void> {
+    const stmt = this.db.prepare(`
+      INSERT INTO prospecto_eventos_log (prospecto_id, evento, estado_anterior, estado_nuevo, detalles, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?);
+    `);
+    stmt.run(
+      evento.prospectoId,
+      evento.evento,
+      evento.estadoAnterior ?? null,
+      evento.estadoNuevo,
+      evento.detalles ?? null,
+      evento.timestamp
+    );
+  }
+
+  public async listarEventos(prospectoId: string): Promise<ProspectoEventoRecord[]> {
+    const stmt = this.db.prepare(`
+      SELECT id, prospecto_id, evento, estado_anterior, estado_nuevo, detalles, timestamp
+      FROM prospecto_eventos_log
+      WHERE prospecto_id = ?
+      ORDER BY id ASC;
+    `);
+    const rows = stmt.all(prospectoId.trim()) as unknown as Array<{
+      id: number;
+      prospecto_id: string;
+      evento: string;
+      estado_anterior: string | null;
+      estado_nuevo: string;
+      detalles: string | null;
+      timestamp: string;
+    }>;
+
+    return rows.map((r) => ({
+      id: r.id,
+      prospectoId: r.prospecto_id,
+      evento: r.evento,
+      estadoAnterior: r.estado_anterior,
+      estadoNuevo: r.estado_nuevo,
+      detalles: r.detalles,
+      timestamp: r.timestamp
+    }));
   }
 
   public async buscarPorId(id: string): Promise<Prospecto | null> {
@@ -145,8 +227,10 @@ export class SqliteProspectoRepository implements IProspectoRepository {
   }
 
   public async eliminar(id: string): Promise<boolean> {
+    const idNorm = id.trim();
+    this.db.prepare(`DELETE FROM prospecto_eventos_log WHERE prospecto_id = ?;`).run(idNorm);
     const stmt = this.db.prepare(`DELETE FROM prospectos WHERE id = ?;`);
-    const result = stmt.run(id.trim());
+    const result = stmt.run(idNorm);
     return Number(result.changes) > 0;
   }
 

@@ -2,7 +2,11 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { Prospecto } from '../domain/prospecto.entity.js';
 import { EstadoProspecto } from '../domain/estado-prospecto.enum.js';
-import type { IProspectoRepository, ProspectoFiltros } from '../domain/prospecto.repository.js';
+import type {
+  IProspectoRepository,
+  ProspectoFiltros,
+  ProspectoEventoRecord
+} from '../domain/prospecto.repository.js';
 
 interface ProspectoRecord {
   id: string;
@@ -17,16 +21,20 @@ interface ProspectoRecord {
 
 export class FileProspectoRepository implements IProspectoRepository {
   private readonly filePath: string;
+  private readonly eventosFilePath: string;
   private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(filePath: string) {
     this.filePath = path.resolve(filePath);
+    const parsed = path.parse(this.filePath);
+    this.eventosFilePath = path.join(parsed.dir, `${parsed.name}.eventos${parsed.ext}`);
   }
 
   public async guardar(prospecto: Prospecto): Promise<void> {
     await this.withLock(async () => {
       const records = await this.readRecords();
       const index = records.findIndex((r) => r.id === prospecto.id);
+      const existing = index >= 0 ? records[index] : null;
       const record: ProspectoRecord = {
         id: prospecto.id,
         nombre: prospecto.nombre,
@@ -43,9 +51,68 @@ export class FileProspectoRepository implements IProspectoRepository {
       } else {
         records.push(record);
       }
-
       await this.writeRecords(records);
+
+      if (!existing) {
+        await this.registrarEventoInternal({
+          prospectoId: prospecto.id,
+          evento: 'PROSPECTO_CREADO',
+          estadoAnterior: null,
+          estadoNuevo: prospecto.estado,
+          detalles: `Prospecto capturado vía ${prospecto.canalOrigen}`,
+          timestamp: prospecto.createdAt.toISOString()
+        });
+      } else if (existing.estado !== prospecto.estado) {
+        await this.registrarEventoInternal({
+          prospectoId: prospecto.id,
+          evento: 'TRANSICION_ESTADO',
+          estadoAnterior: existing.estado,
+          estadoNuevo: prospecto.estado,
+          detalles: `Transición de estado: ${existing.estado} -> ${prospecto.estado}`,
+          timestamp: prospecto.updatedAt.toISOString()
+        });
+      }
     });
+  }
+
+  public async registrarEvento(evento: ProspectoEventoRecord): Promise<void> {
+    await this.withLock(async () => {
+      await this.registrarEventoInternal(evento);
+    });
+  }
+
+  private async registrarEventoInternal(evento: ProspectoEventoRecord): Promise<void> {
+    const eventos = await this.readEventos();
+    eventos.push({
+      id: eventos.length + 1,
+      ...evento
+    });
+    await this.writeEventos(eventos);
+  }
+
+  public async listarEventos(prospectoId: string): Promise<ProspectoEventoRecord[]> {
+    const eventos = await this.readEventos();
+    return eventos.filter((e) => e.prospectoId === prospectoId);
+  }
+
+  private async readEventos(): Promise<ProspectoEventoRecord[]> {
+    try {
+      const data = await fs.readFile(this.eventosFilePath, 'utf-8');
+      if (!data.trim()) return [];
+      return JSON.parse(data) as ProspectoEventoRecord[];
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw err;
+    }
+  }
+
+  private async writeEventos(eventos: ProspectoEventoRecord[]): Promise<void> {
+    const dir = path.dirname(this.eventosFilePath);
+    await fs.mkdir(dir, { recursive: true });
+    const serialized = JSON.stringify(eventos, null, 2);
+    const tempPath = `${this.eventosFilePath}.tmp.${Date.now()}`;
+    await fs.writeFile(tempPath, serialized, 'utf-8');
+    await fs.rename(tempPath, this.eventosFilePath);
   }
 
   public async buscarPorId(id: string): Promise<Prospecto | null> {

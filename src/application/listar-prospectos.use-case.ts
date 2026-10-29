@@ -6,6 +6,6 @@ export class ListarProspectosUseCase {
 
   public async ejecutar(filtros?: ProspectoFiltros): Promise<ProspectoResponseDTO[]> {
     const prospectos = await this.prospectoRepo.buscarTodos(filtros);
-    return prospectos.map(toProspectoResponseDTO);
+    return prospectos.map((p) => toProspectoResponseDTO(p));
   }
 }

@@ -16,6 +16,7 @@ export interface ProspectoRouterDependencies {
   iniciarSeguimientoUseCase: IniciarSeguimientoUseCase;
   cerrarUseCase: CerrarProspectoUseCase;
   listarUseCase: ListarProspectosUseCase;
+  repository?: IProspectoRepository;
   workspaceNotifier?: WorkspaceNotifierService;
 }
 
@@ -25,6 +26,7 @@ export class ProspectoHttpRouter {
   private readonly iniciarSeguimientoUseCase: IniciarSeguimientoUseCase;
   private readonly cerrarUseCase: CerrarProspectoUseCase;
   private readonly listarUseCase: ListarProspectosUseCase;
+  private readonly repository?: IProspectoRepository;
   private readonly workspaceNotifier?: WorkspaceNotifierService;
 
   constructor(
@@ -37,6 +39,7 @@ export class ProspectoHttpRouter {
       this.iniciarSeguimientoUseCase = depsOrRepo.iniciarSeguimientoUseCase;
       this.cerrarUseCase = depsOrRepo.cerrarUseCase;
       this.listarUseCase = depsOrRepo.listarUseCase;
+      this.repository = depsOrRepo.repository;
       this.workspaceNotifier = depsOrRepo.workspaceNotifier ?? workspaceNotifier;
     } else {
       this.crearUseCase = new CrearProspectoUseCase(depsOrRepo);
@@ -44,6 +47,7 @@ export class ProspectoHttpRouter {
       this.iniciarSeguimientoUseCase = new IniciarSeguimientoUseCase(depsOrRepo);
       this.cerrarUseCase = new CerrarProspectoUseCase(depsOrRepo);
       this.listarUseCase = new ListarProspectosUseCase(depsOrRepo);
+      this.repository = depsOrRepo;
       this.workspaceNotifier = workspaceNotifier;
     }
   }
@@ -152,6 +156,19 @@ export class ProspectoHttpRouter {
 
         const resultado: ProspectoResponseDTO = await this.cerrarUseCase.ejecutar(id, body.ganado);
         this.sendJson(res, 200, resultado);
+        return;
+      }
+
+      // 6. GET /api/prospectos/:id/eventos
+      const matchEventos = pathname.match(/^\/api\/prospectos\/([^/]+)\/eventos$/);
+      if (method === 'GET' && matchEventos) {
+        const id = decodeURIComponent(matchEventos[1] ?? '');
+        if (this.repository?.listarEventos) {
+          const eventos = await this.repository.listarEventos(id);
+          this.sendJson(res, 200, eventos);
+          return;
+        }
+        this.sendJson(res, 200, []);
         return;
       }
 

@@ -1,6 +1,6 @@
 import { Prospecto } from '../domain/prospecto.entity.js';
 import type { IProspectoRepository } from '../domain/prospecto.repository.js';
-import type { CrearProspectoInputDTO, ProspectoResponseDTO } from './prospecto.dto.js';
+import { type CrearProspectoInputDTO, type ProspectoResponseDTO, toProspectoResponseDTO } from './prospecto.dto.js';
 
 export class CrearProspectoUseCase {
   constructor(private readonly prospectoRepo: IProspectoRepository) {}
@@ -27,15 +27,6 @@ export class CrearProspectoUseCase {
 
     await this.prospectoRepo.guardar(nuevoProspecto);
 
-    return {
-      id: nuevoProspecto.id,
-      nombre: nuevoProspecto.nombre,
-      email: nuevoProspecto.email,
-      telefono: nuevoProspecto.telefono,
-      canalOrigen: nuevoProspecto.canalOrigen,
-      estado: nuevoProspecto.estado,
-      createdAt: nuevoProspecto.createdAt.toISOString(),
-      updatedAt: nuevoProspecto.updatedAt.toISOString()
-    };
+    return toProspectoResponseDTO(nuevoProspecto);
   }
 }
