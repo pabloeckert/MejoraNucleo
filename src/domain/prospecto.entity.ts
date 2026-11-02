@@ -8,6 +8,12 @@ export interface ProspectoProps {
   telefono: string;
   canalOrigen: string;
   estado?: EstadoProspecto;
+  piezaIdAtribucion?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  buyerPersonaId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -19,6 +25,12 @@ export class Prospecto {
   private _telefono: string;
   private _canalOrigen: string;
   private _estado: EstadoProspecto;
+  private _piezaIdAtribucion: string;
+  private _utmSource: string;
+  private _utmMedium: string;
+  private _utmCampaign: string;
+  private _utmContent: string;
+  private _buyerPersonaId: string;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -49,6 +61,12 @@ export class Prospecto {
     let telefono: string;
     let canalOrigen: string;
     let estado: EstadoProspecto;
+    let piezaIdAtribucion = '';
+    let utmSource = '';
+    let utmMedium = '';
+    let utmCampaign = '';
+    let utmContent = '';
+    let buyerPersonaId = '';
     let createdAt: Date;
     let updatedAt: Date;
 
@@ -59,6 +77,12 @@ export class Prospecto {
       telefono = propsOrId.telefono;
       canalOrigen = propsOrOrigenString(propsOrId.canalOrigen);
       estado = propsOrId.estado ?? EstadoProspecto.CAPTURADO;
+      piezaIdAtribucion = propsOrOrigenString(propsOrId.piezaIdAtribucion);
+      utmSource = propsOrOrigenString(propsOrId.utmSource);
+      utmMedium = propsOrOrigenString(propsOrId.utmMedium);
+      utmCampaign = propsOrOrigenString(propsOrId.utmCampaign);
+      utmContent = propsOrOrigenString(propsOrId.utmContent);
+      buyerPersonaId = propsOrOrigenString(propsOrId.buyerPersonaId);
       createdAt = propsOrId.createdAt ?? new Date();
       updatedAt = propsOrId.updatedAt ?? new Date();
     } else {
@@ -81,6 +105,12 @@ export class Prospecto {
     this._telefono = telefono.trim();
     this._canalOrigen = canalOrigen.trim();
     this._estado = estado;
+    this._piezaIdAtribucion = piezaIdAtribucion.trim();
+    this._utmSource = utmSource.trim();
+    this._utmMedium = utmMedium.trim();
+    this._utmCampaign = utmCampaign.trim();
+    this._utmContent = utmContent.trim();
+    this._buyerPersonaId = buyerPersonaId.trim();
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
   }
@@ -90,6 +120,12 @@ export class Prospecto {
     email: string;
     telefono: string;
     canalOrigen: string;
+    piezaIdAtribucion?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    utmContent?: string;
+    buyerPersonaId?: string;
     id?: string;
   }): Prospecto {
     const ahora = new Date();
@@ -99,6 +135,12 @@ export class Prospecto {
       email: params.email,
       telefono: params.telefono,
       canalOrigen: params.canalOrigen,
+      piezaIdAtribucion: params.piezaIdAtribucion,
+      utmSource: params.utmSource,
+      utmMedium: params.utmMedium,
+      utmCampaign: params.utmCampaign,
+      utmContent: params.utmContent,
+      buyerPersonaId: params.buyerPersonaId,
       estado: EstadoProspecto.CAPTURADO,
       createdAt: ahora,
       updatedAt: ahora
@@ -127,6 +169,30 @@ export class Prospecto {
 
   public get estado(): EstadoProspecto {
     return this._estado;
+  }
+
+  public get piezaIdAtribucion(): string {
+    return this._piezaIdAtribucion;
+  }
+
+  public get utmSource(): string {
+    return this._utmSource;
+  }
+
+  public get utmMedium(): string {
+    return this._utmMedium;
+  }
+
+  public get utmCampaign(): string {
+    return this._utmCampaign;
+  }
+
+  public get utmContent(): string {
+    return this._utmContent;
+  }
+
+  public get buyerPersonaId(): string {
+    return this._buyerPersonaId;
   }
 
   public get createdAt(): Date {
@@ -222,6 +288,12 @@ export class Prospecto {
       telefono: this._telefono,
       canalOrigen: this._canalOrigen,
       estado: this._estado,
+      piezaIdAtribucion: this._piezaIdAtribucion,
+      utmSource: this._utmSource,
+      utmMedium: this._utmMedium,
+      utmCampaign: this._utmCampaign,
+      utmContent: this._utmContent,
+      buyerPersonaId: this._buyerPersonaId,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt
     };

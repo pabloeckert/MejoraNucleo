@@ -14,6 +14,12 @@ interface ProspectoRow {
   telefono: string;
   canal_origen: string;
   estado: string;
+  pieza_id_atribucion?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  buyer_persona_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +45,12 @@ export class SqliteProspectoRepository implements IProspectoRepository {
         telefono TEXT NOT NULL,
         canal_origen TEXT NOT NULL,
         estado TEXT NOT NULL,
+        pieza_id_atribucion TEXT NOT NULL DEFAULT '',
+        utm_source TEXT NOT NULL DEFAULT '',
+        utm_medium TEXT NOT NULL DEFAULT '',
+        utm_campaign TEXT NOT NULL DEFAULT '',
+        utm_content TEXT NOT NULL DEFAULT '',
+        buyer_persona_id TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -58,6 +70,23 @@ export class SqliteProspectoRepository implements IProspectoRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_prospecto_eventos_pid ON prospecto_eventos_log(prospecto_id);
     `);
+
+    // Migración idempotente sin roturas para bases SQLite preexistentes
+    const colsInfo = this.db.prepare(`PRAGMA table_info(prospectos);`).all() as unknown as Array<{ name: string }>;
+    const existingCols = new Set(colsInfo.map((c) => c.name));
+    const optionalCols = [
+      'pieza_id_atribucion',
+      'utm_source',
+      'utm_medium',
+      'utm_campaign',
+      'utm_content',
+      'buyer_persona_id'
+    ];
+    for (const col of optionalCols) {
+      if (!existingCols.has(col)) {
+        this.db.exec(`ALTER TABLE prospectos ADD COLUMN ${col} TEXT NOT NULL DEFAULT '';`);
+      }
+    }
   }
 
   public async guardar(prospecto: Prospecto): Promise<void> {
@@ -65,14 +94,24 @@ export class SqliteProspectoRepository implements IProspectoRepository {
     const existing = await this.buscarPorId(prospecto.id);
 
     const stmt = this.db.prepare(`
-      INSERT INTO prospectos (id, nombre, email, telefono, canal_origen, estado, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO prospectos (
+        id, nombre, email, telefono, canal_origen, estado,
+        pieza_id_atribucion, utm_source, utm_medium, utm_campaign, utm_content, buyer_persona_id,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         nombre = excluded.nombre,
         email = excluded.email,
         telefono = excluded.telefono,
         canal_origen = excluded.canal_origen,
         estado = excluded.estado,
+        pieza_id_atribucion = excluded.pieza_id_atribucion,
+        utm_source = excluded.utm_source,
+        utm_medium = excluded.utm_medium,
+        utm_campaign = excluded.utm_campaign,
+        utm_content = excluded.utm_content,
+        buyer_persona_id = excluded.buyer_persona_id,
         updated_at = excluded.updated_at;
     `);
 
@@ -83,6 +122,12 @@ export class SqliteProspectoRepository implements IProspectoRepository {
       prospecto.telefono,
       prospecto.canalOrigen,
       prospecto.estado,
+      prospecto.piezaIdAtribucion,
+      prospecto.utmSource,
+      prospecto.utmMedium,
+      prospecto.utmCampaign,
+      prospecto.utmContent,
+      prospecto.buyerPersonaId,
       prospecto.createdAt.toISOString(),
       prospecto.updatedAt.toISOString()
     );
@@ -153,7 +198,9 @@ export class SqliteProspectoRepository implements IProspectoRepository {
 
   public async buscarPorId(id: string): Promise<Prospecto | null> {
     const stmt = this.db.prepare(`
-      SELECT id, nombre, email, telefono, canal_origen, estado, created_at, updated_at
+      SELECT id, nombre, email, telefono, canal_origen, estado,
+             pieza_id_atribucion, utm_source, utm_medium, utm_campaign, utm_content, buyer_persona_id,
+             created_at, updated_at
       FROM prospectos
       WHERE id = ?;
     `);
@@ -168,7 +215,9 @@ export class SqliteProspectoRepository implements IProspectoRepository {
 
   public async buscarPorEmail(email: string): Promise<Prospecto | null> {
     const stmt = this.db.prepare(`
-      SELECT id, nombre, email, telefono, canal_origen, estado, created_at, updated_at
+      SELECT id, nombre, email, telefono, canal_origen, estado,
+             pieza_id_atribucion, utm_source, utm_medium, utm_campaign, utm_content, buyer_persona_id,
+             created_at, updated_at
       FROM prospectos
       WHERE email = ?;
     `);
@@ -183,7 +232,9 @@ export class SqliteProspectoRepository implements IProspectoRepository {
 
   public async buscarPorTelefono(telefono: string): Promise<Prospecto | null> {
     const stmt = this.db.prepare(`
-      SELECT id, nombre, email, telefono, canal_origen, estado, created_at, updated_at
+      SELECT id, nombre, email, telefono, canal_origen, estado,
+             pieza_id_atribucion, utm_source, utm_medium, utm_campaign, utm_content, buyer_persona_id,
+             created_at, updated_at
       FROM prospectos
       WHERE telefono = ?;
     `);
@@ -197,7 +248,9 @@ export class SqliteProspectoRepository implements IProspectoRepository {
   }
 
   public async buscarTodos(filtros?: ProspectoFiltros): Promise<Prospecto[]> {
-    let sql = `SELECT id, nombre, email, telefono, canal_origen, estado, created_at, updated_at FROM prospectos`;
+    let sql = `SELECT id, nombre, email, telefono, canal_origen, estado,
+                      pieza_id_atribucion, utm_source, utm_medium, utm_campaign, utm_content, buyer_persona_id,
+                      created_at, updated_at FROM prospectos`;
     const conditions: string[] = [];
     const params: (string | number)[] = [];
 
@@ -248,6 +301,12 @@ export class SqliteProspectoRepository implements IProspectoRepository {
       telefono: row.telefono,
       canalOrigen: row.canal_origen,
       estado: row.estado as EstadoProspecto,
+      piezaIdAtribucion: row.pieza_id_atribucion ?? '',
+      utmSource: row.utm_source ?? '',
+      utmMedium: row.utm_medium ?? '',
+      utmCampaign: row.utm_campaign ?? '',
+      utmContent: row.utm_content ?? '',
+      buyerPersonaId: row.buyer_persona_id ?? '',
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at)
     });

@@ -6,6 +6,12 @@ export interface CrearProspectoInputDTO {
   email: string;
   telefono: string;
   canalOrigen: string;
+  piezaIdAtribucion?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  buyerPersonaId?: string;
 }
 
 export interface CalificarProspectoInputDTO {
@@ -30,6 +36,12 @@ export interface ProspectoResponseDTO {
   telefono: string;
   canalOrigen: string;
   estado: EstadoProspecto;
+  piezaIdAtribucion?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  buyerPersonaId?: string;
   createdAt: string;
   updatedAt: string;
   slaHorasRestantes: number;
@@ -63,6 +75,12 @@ export function toProspectoResponseDTO(
     telefono: prospecto.telefono,
     canalOrigen: prospecto.canalOrigen,
     estado: prospecto.estado,
+    piezaIdAtribucion: prospecto.piezaIdAtribucion,
+    utmSource: prospecto.utmSource,
+    utmMedium: prospecto.utmMedium,
+    utmCampaign: prospecto.utmCampaign,
+    utmContent: prospecto.utmContent,
+    buyerPersonaId: prospecto.buyerPersonaId,
     createdAt: prospecto.createdAt.toISOString(),
     updatedAt: prospecto.updatedAt.toISOString(),
     slaHorasRestantes,

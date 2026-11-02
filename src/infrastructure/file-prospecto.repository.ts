@@ -15,6 +15,12 @@ interface ProspectoRecord {
   telefono: string;
   canalOrigen: string;
   estado: EstadoProspecto;
+  piezaIdAtribucion?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  buyerPersonaId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +48,12 @@ export class FileProspectoRepository implements IProspectoRepository {
         telefono: prospecto.telefono,
         canalOrigen: prospecto.canalOrigen,
         estado: prospecto.estado,
+        piezaIdAtribucion: prospecto.piezaIdAtribucion,
+        utmSource: prospecto.utmSource,
+        utmMedium: prospecto.utmMedium,
+        utmCampaign: prospecto.utmCampaign,
+        utmContent: prospecto.utmContent,
+        buyerPersonaId: prospecto.buyerPersonaId,
         createdAt: prospecto.createdAt.toISOString(),
         updatedAt: prospecto.updatedAt.toISOString()
       };
@@ -207,6 +219,12 @@ export class FileProspectoRepository implements IProspectoRepository {
       telefono: record.telefono,
       canalOrigen: record.canalOrigen,
       estado: record.estado,
+      piezaIdAtribucion: record.piezaIdAtribucion ?? '',
+      utmSource: record.utmSource ?? '',
+      utmMedium: record.utmMedium ?? '',
+      utmCampaign: record.utmCampaign ?? '',
+      utmContent: record.utmContent ?? '',
+      buyerPersonaId: record.buyerPersonaId ?? '',
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt)
     });

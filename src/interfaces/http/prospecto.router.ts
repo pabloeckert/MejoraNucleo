@@ -67,7 +67,9 @@ export class ProspectoHttpRouter {
     try {
       // 1. POST /api/prospectos
       if (method === 'POST' && pathname === '/api/prospectos') {
-        const body = await this.parseJsonBody<Partial<CrearProspectoInputDTO>>(req);
+        const body = await this.parseJsonBody<
+          Partial<CrearProspectoInputDTO> & Record<string, unknown>
+        >(req);
         
         if (!body || typeof body !== 'object') {
           this.sendJson(res, 400, { error: 'El cuerpo de la solicitud no es un JSON válido.' });
@@ -78,7 +80,13 @@ export class ProspectoHttpRouter {
           nombre: String(body.nombre ?? ''),
           email: String(body.email ?? ''),
           telefono: String(body.telefono ?? ''),
-          canalOrigen: String(body.canalOrigen ?? '')
+          canalOrigen: String(body.canalOrigen ?? body.canal_origen ?? ''),
+          piezaIdAtribucion: String(body.piezaIdAtribucion ?? body.pieza_id_atribucion ?? ''),
+          utmSource: String(body.utmSource ?? body.utm_source ?? ''),
+          utmMedium: String(body.utmMedium ?? body.utm_medium ?? ''),
+          utmCampaign: String(body.utmCampaign ?? body.utm_campaign ?? ''),
+          utmContent: String(body.utmContent ?? body.utm_content ?? ''),
+          buyerPersonaId: String(body.buyerPersonaId ?? body.buyer_persona_id ?? '')
         };
 
         const resultado: ProspectoResponseDTO = await this.crearUseCase.ejecutar(dto);

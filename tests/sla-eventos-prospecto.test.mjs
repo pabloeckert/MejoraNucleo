@@ -145,5 +145,48 @@ test('Protocolo SRE - SLA 48h y Auditoría de Eventos Append-Only', async (t) =>
       await app.stop();
     }
   });
+
+  await t.test('4. Bloque MVP 1: Enchufe Universal de Atribución (piezaIdAtribucion, UTM y Buyer Persona)', async () => {
+    const db = new DatabaseSync(':memory:');
+    const repo = new SqliteProspectoRepository(db);
+    const app = createAppServer({ port: 0, repository: repo });
+    const { url } = await app.start();
+
+    try {
+      const resCrear = await fetch(`${url}/api/prospectos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Roberto Industrial',
+          email: 'roberto@industria.com.ar',
+          telefono: '+5491133334444',
+          canalOrigen: 'landing_hostinger',
+          piezaIdAtribucion: 'PROP-2026-W04-02',
+          utmSource: 'instagram',
+          utmMedium: 'organic_social',
+          utmCampaign: 'edificio_comercial_q4',
+          utmContent: 'PROP-2026-W04-02',
+          buyerPersonaId: 'BP-01-FUNDADOR-SATURADO'
+        })
+      });
+      assert.equal(resCrear.status, 201);
+      const creado = await resCrear.json();
+      assert.equal(creado.piezaIdAtribucion, 'PROP-2026-W04-02');
+      assert.equal(creado.utmSource, 'instagram');
+      assert.equal(creado.utmMedium, 'organic_social');
+      assert.equal(creado.utmCampaign, 'edificio_comercial_q4');
+      assert.equal(creado.utmContent, 'PROP-2026-W04-02');
+      assert.equal(creado.buyerPersonaId, 'BP-01-FUNDADOR-SATURADO');
+
+      const resList = await fetch(`${url}/api/prospectos`);
+      assert.equal(resList.status, 200);
+      const lista = await resList.json();
+      assert.equal(lista.length, 1);
+      assert.equal(lista[0].piezaIdAtribucion, 'PROP-2026-W04-02');
+      assert.equal(lista[0].buyerPersonaId, 'BP-01-FUNDADOR-SATURADO');
+    } finally {
+      await app.stop();
+    }
+  });
 });
 

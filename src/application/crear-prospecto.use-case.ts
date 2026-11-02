@@ -22,7 +22,13 @@ export class CrearProspectoUseCase {
       nombre: input.nombre,
       email: input.email,
       telefono: input.telefono,
-      canalOrigen: input.canalOrigen
+      canalOrigen: input.canalOrigen,
+      piezaIdAtribucion: input.piezaIdAtribucion,
+      utmSource: input.utmSource,
+      utmMedium: input.utmMedium,
+      utmCampaign: input.utmCampaign,
+      utmContent: input.utmContent,
+      buyerPersonaId: input.buyerPersonaId
     });
 
     await this.prospectoRepo.guardar(nuevoProspecto);
