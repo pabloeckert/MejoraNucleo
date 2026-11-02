@@ -188,5 +188,59 @@ test('Protocolo SRE - SLA 48h y Auditoría de Eventos Append-Only', async (t) =>
       await app.stop();
     }
   });
+
+  await t.test('5. Bloque MVP 2: Ingesta Consultiva 4D (MejoraDiagnostico + Mejoraok)', async () => {
+    const db = new DatabaseSync(':memory:');
+    const repo = new SqliteProspectoRepository(db);
+    const app = createAppServer({ port: 0, repository: repo });
+    const { url } = await app.start();
+
+    try {
+      // 1. Prospecto proveniente de MejoraDiagnostico
+      const resDiagnostico = await fetch(`${url}/api/prospectos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Lic. Mariana Gómez',
+          email: 'mariana@consultora.com',
+          telefono: '+5491122223333',
+          canalOrigen: 'diagnostico_4d',
+          buyerPersonaId: 'SATURADO',
+          mensaje: 'Diagnóstico 4D completado. Score total: 42 pts. Perfil: SATURADO.'
+        })
+      });
+      assert.equal(resDiagnostico.status, 201);
+      const leadDiag = await resDiagnostico.json();
+      assert.equal(leadDiag.canalOrigen, 'diagnostico_4d');
+      assert.equal(leadDiag.buyerPersonaId, 'SATURADO');
+      // mensaje validado en payload
+
+      // 2. Prospecto proveniente de Mejoraok Landing
+      const resMejoraok = await fetch(`${url}/api/prospectos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Esteban Martínez',
+          email: 'esteban@pyme.com',
+          telefono: '+5493764889900',
+          canalOrigen: 'mejoraok_landing',
+          mensaje: 'CTA: modal_hablemos_ahora',
+          utmSource: 'mejoraok_landing'
+        })
+      });
+      assert.equal(resMejoraok.status, 201);
+      const leadOk = await resMejoraok.json();
+      assert.equal(leadOk.canalOrigen, 'mejoraok_landing');
+      assert.equal(leadOk.utmSource, 'mejoraok_landing');
+
+      // 3. Auditoría de lista completa
+      const resList = await fetch(`${url}/api/prospectos`);
+      assert.equal(resList.status, 200);
+      const prospectos = await resList.json();
+      assert.equal(prospectos.length, 2);
+    } finally {
+      await app.stop();
+    }
+  });
 });
 
