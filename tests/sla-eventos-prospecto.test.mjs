@@ -242,5 +242,43 @@ test('Protocolo SRE - SLA 48h y Auditoría de Eventos Append-Only', async (t) =>
       await app.stop();
     }
   });
+
+  await t.test('6. Bloque MVP 4: Inyección desde Base Propia (MejoraContactos) y Aceleración WhatsApp', async () => {
+    const db = new DatabaseSync(':memory:');
+    const repo = new SqliteProspectoRepository(db);
+    const app = createAppServer({ port: 0, repository: repo });
+    const { url } = await app.start();
+
+    try {
+      // 1. Prospecto importado desde MejoraContactos
+      const resContactos = await fetch(`${url}/api/prospectos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Carlos Gerente General',
+          email: 'carlos@pymeindustrial.com',
+          telefono: '+5491166667777',
+          canalOrigen: 'base_propia_contactos',
+          mensaje: 'Importado y depurado desde MejoraContactos. Score IA: 9.4. Segmento: A.'
+        })
+      });
+      assert.equal(resContactos.status, 201);
+      const leadBase = await resContactos.json();
+      assert.equal(leadBase.canalOrigen, 'base_propia_contactos');
+      assert.equal(leadBase.telefono, '+5491166667777');
+      assert.equal(leadBase.slaEstado, 'VERDE');
+
+      // 2. Transición y aceleración comercial
+      const resCalificar = await fetch(`${url}/api/prospectos/${leadBase.id}/calificar`, {
+        method: 'PATCH'
+      });
+      assert.equal(resCalificar.status, 200);
+      const leadCalificado = await resCalificar.json();
+      assert.equal(leadCalificado.estado, 'CALIFICADO');
+      assert.equal(leadCalificado.slaEstado, 'CUMPLIDO');
+    } finally {
+      await app.stop();
+    }
+  });
 });
 
